@@ -68,3 +68,24 @@ These commands will remove any stray containers, volumes, and images that are no
 
 `docker system prune --all --volumes --force`
 - usar con cuidado
+
+
+
+Use the docker run --rm -it --name MYCONTAINER [IMAGE] bash command to open an interactive terminal within your container
+
+Grab your container’s last 100 logs:
+
+docker logs --tail 100 [container ID]
+ 
+
+Grab all logs for a specific container:
+
+docker logs [container ID]
+ 
+
+View all active processes within a running container, should its logs be inaccessible:
+
+docker top [container ID]
+
+
+
