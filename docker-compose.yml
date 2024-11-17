@@ -1,0 +1,911 @@
+version: "3.9"
+services:
+
+############################  SISTEMA 
+
+ portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: always
+    # command: -H unix:///var/run/docker.sock (USADO EN PORTAINER PASADO)
+   # security_opt:
+     # - no-new-privileges:true
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${USERDIR}/docker/portainer/data:/data
+     # - ${USERDIR}/docker/shared:/shared
+    environment:
+      - TZ=${TZ}
+
+ watchtower:
+    container_name: watchtower
+    restart: always
+    image: v2tec/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --schedule "0 0 4 * * *" --cleanup
+
+
+ filebrowser:
+    image: hurlenko/filebrowser
+    user: "${UID}:${GID}"
+    ports:
+      - 8898:8080
+    volumes:
+      - /:/data/
+      - ${USERDIR}/docker/filebrowser/CONFIG_DIR:/config
+    environment:
+      - FB_BASEURL=/filebrowser
+    restart: always
+
+
+
+
+############################ BASES DE DATOS
+ mariadb:
+    image: "linuxserver/mariadb"
+    container_name: "mariadb"
+    hostname: 'mariadb'
+    volumes:
+        - ${USERDIR}/docker/mariadb:/config
+        - /etc/timezone:/etc/timezone:ro
+        - /etc/localtime:/etc/localtime:ro
+    ports:
+      - target: 3306
+        published: 3306
+        protocol: tcp
+        mode: host
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+ phpmyadmin:
+    hostname: phpmyadmin
+    container_name: phpmyadmin
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    links:
+      - mariadb:db
+    ports:
+      - 6060:80
+    environment:
+      - PMA_HOST=mariadb
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - PMA_ARBITRARY=1
+
+ doku:
+        image: amerkurev/doku
+        container_name: doku
+        restart: always
+        ports:
+            - '9090:9090'
+        volumes:
+            - '/var/run/docker.sock:/var/run/docker.sock:ro'
+            - '/:/hostroot:ro'
+
+
+
+
+########################## Nextcloud
+### NOT in use
+
+#  nextcloud:
+#     container_name: nextcloud
+#     restart: always
+#     image: nextcloud:latest
+#     volumes:
+#      # - ${DATA_DIR}/nextcloud:/config
+#      # - ${DATA_DIR}/nextcloud:/data
+#       - ${DATA_DIR}/nextcloud:/var/www/html
+#     ports:
+#       - "8000:80"
+#       - "8443:443"
+#     environment:
+#      # - PUID=${PUID}
+#      # - PGID=${PGID}
+#      # - TZ=${TZ}
+#       - MYSQL_PASSWORD=
+#       - MYSQL_DATABASE=nextcloud
+#       - MYSQL_USER=nextcloud
+#       - MYSQL_HOST=db_nextcloud
+#       - PHP_MEMORY_LIMIT=1G
+#     links:
+#       - db_nextcloud
+
+#  db_nextcloud:
+#     image: mariadb:10.5
+#     restart: always
+#     command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+#     volumes:
+#       - ${USERDIR}/docker/mariadb_nextcloud:/var/lib/mysql # MySQL / MariaDB Data
+#     environment:
+#       - MYSQL_ROOT_PASSWORD=Hy86jA2vv
+#       - MYSQL_PASSWORD=iQ73MFn3g
+#       - MYSQL_DATABASE=nextcloud
+#       - MYSQL_USER=nextcloud
+
+# cron:
+#     image: rcdailey/nextcloud-cronjob
+#     restart: always
+#     network_mode: none
+#     depends_on:
+#     - app
+#     volumes:
+#     - /var/run/docker.sock:/var/run/docker.sock:ro
+#     - /etc/localtime:/etc/localtime:ro
+#     environment:
+#     - NEXTCLOUD_CONTAINER_NAME=app
+#     - NEXTCLOUD_PROJECT_NAME=nextcloud
+
+############################## youtube
+
+#  ytdl-sub:
+#     image: ghcr.io/jmbannon/ytdl-sub:latest
+#     container_name: ytdl-sub
+#     environment:
+#       - PUID=${PUID}
+#       - PGID=${PGID}
+#       - TZ=${TZ}
+#       - docker exec -it ytdl-sub /bin/bash
+#       - DOCKER_MODS=linuxserver/mods:universal-cron
+#     volumes:
+#       - ${DATA_DIR}/multimedia/media/ytdlsub_config:/config
+#       - ${DATA_DIR}/multimedia/media/ytdl_series:/tv_shows # optional
+#       - ${DATA_DIR}/multimedia/media/ytdl_pelis:/movies # optional
+#       - ${DATA_DIR}/multimedia/media/ytdl_musicvideos:/music_videos # optional
+#       - ${DATA_DIR}/multimedia/media/ytdl_music:/musica # optional
+#       - ${DATA_DIR}/multimedia/media/ytdlsub_config/crontabs:/etc/crontabs
+#       - ${DATA_DIR}/multimedia/media/ytdlsub_config/custom-services.d>:/custom-services.d
+#       - ${DATA_DIR}/multimedia/media/ytdlsub_config/custom-cont-init>:/custom-cont-init.d
+#     restart: unless-stopped
+
+#  ytdl-sub_musica:
+#     image: ghcr.io/jmbannon/ytdl-sub:latest
+#     container_name: ytdl-sub_musica
+#     environment:
+#       - PUID=${PUID}
+#       - PGID=${PGID}
+#       - TZ=${TZ}
+#       - docker exec -it ytdl-sub /bin/bash
+#       - DOCKER_MODS=linuxserver/mods:universal-cron
+#     volumes:
+#       - ${DATA_DIR}/multimedia/media/ytdlsub_musica_config:/config
+#       - ${DATA_DIR}/multimedia/media/ytdlsub_musica_config/biblioteca:/musica # optional
+#       - ${DATA_DIR}/multimedia/media/ytdlsub_musica_config/crontabs:/etc/crontabs
+#       - ${DATA_DIR}/multimedia/media/ytdlsub_musica_config/custom-services.d>:/custom-services.d
+#       - ${DATA_DIR}/multimedia/media/ytdlsub_musica_config/custom-cont-init>:/custom-cont-init.d
+#     restart: unless-stopped
+
+ tubearchivist_v2:
+    container_name: tubearchivist
+    restart: unless-stopped
+    image: bbilly1/tubearchivist
+    ports:
+      - 1001:8000
+    volumes:
+      -  ${DATA_DIR}/multimedia/media/tubearchivist_santi:/youtube
+      -  ${USERDIR}/docker/tubearchivist_v2/cache:/cache
+    environment:
+      - ES_URL=http://archivist-es:9200     # needs protocol e.g. http and port
+      - REDIS_HOST=archivist-redis          # don't add protocol
+      - HOST_UID=1000
+      - HOST_GID=1000
+      - TA_HOST=.100         # set your host name
+      - TA_USERNAME=           # your initial TA credentials
+      - TA_PASSWORD=              # your initial TA credentials
+      - ELASTIC_PASSWORD=         # set password for Elasticsearch
+      - TZ=${TZ}                 # set your time zone
+      # - ES_DISABLE_VERIFY_SSL=FALSE
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1001/health"]
+      interval: 2m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - archivist-es
+      - archivist-redis
+ archivist-redis:
+    image: redis/redis-stack-server
+    container_name: archivist-redis
+    restart: always
+    expose:
+      - "6379"
+    volumes:
+      - ${USERDIR}/docker/tubearchivist_v2/redis:/data
+    depends_on:
+      - archivist-es
+    security_opt:
+      - no-new-privileges:true
+ archivist-es:
+    image: bbilly1/tubearchivist-es         # only for amd64, or use official es 8.6.2
+    container_name: archivist-es
+    restart: always
+    environment:
+      - ELASTIC_PASSWORD=       # matching Elasticsearch password
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=true
+      - discovery.type=single-node
+      - path.repo=/usr/share/elasticsearch/data/snapshot
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ${USERDIR}/docker/tubearchivist_v2/es:/usr/share/elasticsearch/data    # check for permission error when using bind mount, see readme
+    expose:
+      - "9200"
+    security_opt:
+      - no-new-privileges:true
+#  volumes:
+#    media:
+#    cache:
+#    redis:
+#    es:
+
+
+
+
+
+############################# Downloaders - Indexers
+
+ qbittorrent:
+    image: "linuxserver/qbittorrent"
+    container_name: "qbittorrent"
+    volumes:
+      - ${USERDIR}/docker/qbittorrent:/config
+  #      - ${USERDIR}/Downloads/completed:/downloads
+      - ${DATA_DIR}/multimedia/torrents:/data/torrents
+  #      - ${USERDIR}/docker/shared:/shared
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+      - 8181:8181
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK_SET=002
+      - WEBUI_PORT=8181
+
+ sabnzbd:
+    image: "linuxserver/sabnzbd"
+    container_name: "sabnzbd"
+    volumes:
+      - ${USERDIR}/docker/sabnzbd:/config
+  #      - ${USERDIR}/Downloads/completed:/downloads
+  # mount pasado diciembre 2021      - /home/HD4TB/downloads:/downloads
+      - ${DATA_DIR}/multimedia/usenet:/data/usenet
+  #      - ${USERDIR}/Downloads/incomplete:/incomplete-downloads
+  #      - /home/HD4TB/downloads/incomplete:/incomplete-downloads 
+  #       - /1HD/usenet/incomplete:/incomplete-downloads
+  #      - ${USERDIR}/docker/shared:/shared
+    ports:
+        - "8282:8080"
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+ nzbhydra2:
+    image: "lscr.io/linuxserver/nzbhydra2:latest"
+    container_name: "nzbhydra2"
+    volumes:
+      - ${USERDIR}/docker/nzbhydra:/config
+      - ${DATA_DIR}/multimedia/usenet:/downloads
+    ports:
+        - "5076:5076"
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+
+ radarr:
+    image: "linuxserver/radarr"
+    container_name: "radarr"
+    volumes:
+      - ${USERDIR}/docker/radarr:/config
+  #      - ${USERDIR}/Downloads/completed:/downloads
+      - ${DATA_DIR}/multimedia:/data
+  #      - ${USERDIR}/media/movies:/movies
+  #      - /home/HD4TB/media/pelis:/movies
+  #      - "/etc/localtime:/etc/localtime:ro"
+  #      - ${USERDIR}/docker/shared:/shared
+    ports:
+      - "7878:7878"
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+ sonarr:
+    image: "linuxserver/sonarr"
+    container_name: "sonarr"
+    volumes:
+      - ${USERDIR}/docker/sonarr:/config
+  #      - ${USERDIR}/Downloads/completed:/downloads
+  #      - /home/HD4TB/downloads:/downloads
+  #      - ${USERDIR}/media/tvshows:/tv
+  #      - /home/HD4TB/media/series:/tv
+  #      - /mnt/1hd/torrents:/downloads 
+      - ${DATA_DIR}/multimedia:/data
+  #      - "/etc/localtime:/etc/localtime:ro"
+  #      - ${USERDIR}/docker/shared:/shared
+    ports:
+      - "8989:8989"
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+ jackett:
+    image: "linuxserver/jackett"
+    container_name: "jackett"
+    volumes:
+      - ${USERDIR}/docker/jackett:/config
+  #      - ${USERDIR}/Downloads/completed:/downloads
+      - ${DATA_DIR}/multimedia/completed:/downloads
+  #      - "/etc/localtime:/etc/localtime:ro"
+  #      - ${USERDIR}/docker/shared:/shared
+    ports:
+      - "9117:9117"
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+ bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - ${USERDIR}/docker/bazarr:/config
+      - ${DATA_DIR}/multimedia/media/pelis:/movies #optional
+      - ${DATA_DIR}/multimedia/media/series:/tv #optional
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+
+ readarr:
+    image: lscr.io/linuxserver/readarr:develop
+    container_name: readarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /path/to/data:/config
+      - ${DATA_DIR}/multimedia/media/libros:/books #optional
+      - ${DATA_DIR}/multimedia/completed:/downloads #optional
+    ports:
+      - 8787:8787
+    restart: unless-stopped
+
+#  overseerr:
+#     image: lscr.io/linuxserver/overseerr:latest
+#     container_name: overseerr
+#     environment:
+#       - PUID=${PUID}
+#       - PGID=${PGID}
+#       - TZ=${TZ}
+#     volumes:
+#       - ${USERDIR}/docker/overseerr/appdata/config:/config
+#     ports:
+#       - 5055:5055
+#     restart: unless-stopped
+
+############################# Media
+
+#  podgrab:
+#     image: akhilrex/podgrab
+#     container_name: podgrab
+#     environment:
+#       - CHECK_FREQUENCY=1440
+#     # - PASSWORD=password     ## Uncomment to enable basic authentication, username = podgrab
+#     volumes:
+#       - ${USERDIR}/docker/podgrab:/config
+#       - ${DATA_DIR}/multimedia/media/podcasts:/assets
+#     ports:
+#       - 5080:8080
+#     restart: unless-stopped
+
+ lidarr_steroids:
+    image: youegraillot/lidarr-on-steroids
+    restart: unless-stopped
+    ports:
+      - "8686:8686" # Lidarr web UI
+      - "6595:6595" # Deemix web UI
+    volumes:
+      - ${USERDIR}/docker/lidar_steroids:/config
+      - ${USERDIR}/docker/demix:/config_deemix
+      - ${DATA_DIR}/multimedia/media/musica/deemix:/downloads
+      - ${DATA_DIR}/multimedia/media/musica/lidarr_music:/music
+
+
+#  plexms:
+#     container_name: plexms
+#     restart: always
+#     image: plexinc/pms-docker
+#     network_mode: host
+#     volumes:
+#       - ${USERDIR}/docker/plexms:/config
+#       - ${USERDIR}/Downloads/plex_tmp:/transcode
+#       - ${DATA_DIR}/multimedia/media:/data/media
+#   #      - /home/1_HDD/[4] Multimedia/[4.71] Series/:/data/tvshows
+#   #      - /home/HD4TB/media/series/:/data/tvshows
+#   #      - /home/1_HDD/[4] Multimedia/[4.70] Pelis/:/data/movies
+#   #      - /home/HD4TB/media/pelis/:/data/movies
+#   #      - ${USERDIR}/docker/shared:/shared
+#     environment:
+#       - TZ=${TZ}
+#       - HOSTNAME="Docker Plex"
+#       - PLEX_CLAIM="claim-6Z2Yy8kQyy1UNsvtaX12"
+#       - PLEX_UID=${PUID}
+#       - PLEX_GID=${PGID}
+#       - LD_LIBRARY_PATH=${USERDIR}/docker/plexms/plexmediaserver:/mediaserver
+
+ jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      # - JELLYFIN_PublishedServerUrl=100.xxx.xxx.xxx:1001 #optional
+    volumes:
+      - ${DATA_DIR}/multimedia/jellyfin:/config
+      - ${DATA_DIR}/multimedia/media/series:/data/tvshows
+      - ${DATA_DIR}/multimedia/media/pelis:/data/movies
+      - ${DATA_DIR}/multimedia/media/pelis_kids:/data/movies2
+      - ${DATA_DIR}/multimedia/media/tubearchivist_santi:/data/tube:ro # read only
+      - ${DATA_DIR}/multimedia/media/pinchflat/Tutoriales:/data/tutriales:ro
+      - ${DATA_DIR}/multimedia/media/pinchflat/videos:/data/videos:ro
+      - ${DATA_DIR}/multimedia/media/pinchflat/Documntales:/data/documentales:ro
+      - ${DATA_DIR}/multimedia/media/pinchflat/shows:/data/chows:ro
+      - ${DATA_DIR}/multimedia/media/pinchflat/Comerciales:/data/comerciales:ro
+      - ${DATA_DIR}/multimedia/media/pinchflat/showsHD:/data/showsHD:ro
+      # - ${DATA_DIR}/multimedia/media/ytdlsub_config/first_config/tv_shows/:/data/tvshows2
+      # - ${DATA_DIR}/multimedia/media/musica:/data/musica
+      # - ${DATA_DIR}/multimedia/media/podcasts:/data/podcasts
+      # - ${DATA_DIR}/multimedia/media/tubearchivist_santi:/youtube:ro
+    ports:
+      - 8096:8096
+      - 8920:8920 #optional
+      - 7359:7359/udp #optional
+      - 1900:1900/udp #optional
+    restart: unless-stopped
+
+
+ ersatztv:
+    image: jasongdove/ersatztv
+    restart: unless-stopped
+    volumes:
+      - ${USERDIR}/docker/ersatztv:/root/.local/share/ersatztv
+      # - ${DATA_DIR}/multimedia/media:/media:ro
+      - ${DATA_DIR}/multimedia/media/series:/tv:ro
+      - ${DATA_DIR}/multimedia/media/movies:/movies:ro
+      - ${DATA_DIR}/multimedia/media/tubearchivist_santi:/tube:ro
+    ports:
+      - '8409:8409'
+    environment:
+      - TZ=${TZ}
+    container_name: ersatztv
+
+
+ pinchflat:
+    image: ghcr.io/kieraneglin/pinchflat:latest
+    environment:
+      # Set the timezone to your local timezone
+      - TZ=${TZ}
+    ports:
+      - '8945:8945'
+    volumes:
+      - ${USERDIR}/docker/pinchflat/config:/config
+      - ${DATA_DIR}/multimedia/media/pinchflat:/downloads
+    restart: unless-stopped
+
+ pinchflatMusic:
+    image: ghcr.io/kieraneglin/pinchflat:latest
+    environment:
+      # Set the timezone to your local timezone
+      - TZ=${TZ}
+    ports:
+      - '8946:8945'
+    volumes:
+      - ${USERDIR}/docker/pinchflatMusic/config:/config
+      - ${DATA_DIR}/multimedia/media/musica/pinchflat:/downloads
+    restart: unless-stopped
+
+#  ytdlp2strm:
+# no funciona, crea directorios en lugar de .json
+#     image: fe80grau/ytdlp2strm
+#     container_name: ytdlp2STRM
+#     environment:
+#       - AM_I_IN_A_DOCKER_CONTAINER=Yes
+#       - DOCKER_PORT=5005
+#       # - PUID=${PUID}
+#       # - PGID=${PGID}
+#       # - TZ=${TZ}
+#     volumes:
+#       - ${USERDIR}/docker/ytdlp2STRM/media:/media
+#       - ${USERDIR}/docker/ytdlp2strm/channel_list.json:/opt/ytdlp2STRM/plugins/youtube/channel_list.json
+#       - ${USERDIR}/docker/ytdlp2strm/config.json:/opt/ytdlp2STRM/plugins/youtube/config.json
+#       - ${USERDIR}/docker/ytdlp2STRM/config.json:/opt/ytdlp2STRM/config/config.json
+#       - ${USERDIR}/docker/ytdlp2STRM/crons.json:/opt/ytdlp2STRM/config/crons.json
+#       - ${USERDIR}/docker/ytdlp2STRM/ytdlp2strm.log:/opt/ytdlp2STRM/ytdlp2strm.log
+#       - ytdlp2strm-data:/opt/ytdlp2STRM
+#     ports:
+#       - 5005:5000
+#     restart: always
+
+
+
+
+#  tautulli:
+#     container_name: tautulli
+#     restart: always
+#     image: linuxserver/tautulli
+#     volumes:
+#       - ${USERDIR}/docker/tautulli/config:/config
+#       - ${USERDIR}/docker/tautulli/logs:/logs:ro
+#       - ${USERDIR}/docker/shared:/shared
+#     ports:
+#       - "8787:8181"
+#     environment:
+#       - PUID=${PUID}
+#       - PGID=${PGID}
+#       - TZ=${TZ}
+
+ ombi:
+    container_name: ombi
+    restart: always
+    image: linuxserver/ombi
+    volumes:
+      - ${USERDIR}/docker/ombi:/config
+      - ${USERDIR}/docker/shared:/shared
+    ports:
+      - "3579:3579"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+
+ audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:latest
+    # image: ghcr.io/advplyr/audiobookshelf:2.3.3
+    # environment:
+    #  - AUDIOBOOKSHELF_UID=99
+    #  - AUDIOBOOKSHELF_GID=100
+    ports:
+      - 13378:80
+    volumes:
+      - ${DATA_DIR}/multimedia/media/audiolibros:/audiobooks
+      - ${DATA_DIR}/multimedia/media/podcasts:/podcasts
+      # - ${USERDIR}/docker/audiobookshelf:/config
+      - ${USERDIR}/docker/audiobookshelf2:/config
+      # - ${USERDIR}/docker/audiobookshelf/metadata:/metadata
+      - ${USERDIR}/docker/audiobookshelf2/metadata:/metadata
+    restart: unless-stopped
+
+
+
+############################# Musica
+
+ navidrome:
+    image: deluan/navidrome:latest
+    ports:
+      - "4533:4533"
+    environment:
+      # Optional: put your config options customization here. Examples:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - ND_SCANSCHEDULE=24h
+      - ND_LOGLEVEL=info
+      - ND_AUTOIMPORTPLAYLISTS=true
+    volumes:
+      - "${USERDIR}/docker/navidrome/data:/data"
+      - "${DATA_DIR}/multimedia/media/musica:/music:ro"
+    restart: unless-stopped
+
+#  airsonic-advanced:
+#     image: lscr.io/linuxserver/airsonic-advanced:latest
+#     container_name: airsonic-advanced
+#     environment:
+#       - PUID=${PUID}
+#       - PGID=${PGID}
+#       - TZ=${TZ}
+#       # - CONTEXT_PATH=<URL_BASE> #optional
+#       # - JAVA_OPTS=<options> #optional
+#     volumes:
+#       - ${USERDIR}/docker/airsonic:/config
+#       - ${DATA_DIR}/multimedia/media/musica:/var/music
+#       - ${DATA_DIR}/multimedia/media/musica/playlists:/var/playlists
+#       - ${DATA_DIR}/multimedia/media/podcasts:/var/podcasts
+#     #      - /mnt/1hd/multimedia/media/tubesync:/media
+#        # - </path/to/other media>:/media #optional
+#     ports:
+#       - 4040:4040
+#     #    devices:
+#    #     - /dev/snd:/dev/snd #optional
+#     restart: unless-stopped
+
+#  ampache:
+#     image: ampache/ampache:latest
+#     container_name: ampache
+#     restart: unless-stopped
+#     ports:
+#       - 7780:80
+#     volumes:
+#       - ${USERDIR}/docker/ampache/data/config:/var/www/config
+#       - ${USERDIR}/docker/ampache/logs/log:/var/log/ampache 
+#       - ${DATA_DIR}/multimedia/media/musica:/media
+#       - ${USERDIR}/docker/ampache/mysql:/var/lib/mysql
+
+############################# Software
+
+
+ mealie:
+    container_name: mealie
+    image: hkotel/mealie:v0.5.6
+    restart: always
+    ports:
+       - 9925:80
+       - 9225:9225
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+
+      # Default Recipe Settings
+      RECIPE_PUBLIC: 'true'
+      RECIPE_SHOW_NUTRITION: 'true'
+      RECIPE_SHOW_ASSETS: 'true'
+      RECIPE_LANDSCAPE_VIEW: 'true'
+      RECIPE_DISABLE_COMMENTS: 'false'
+      RECIPE_DISABLE_AMOUNT: 'false'
+
+      # Gunicorn
+      # WEB_CONCURRENCY: 2
+      # WORKERS_PER_CORE: 0.5
+      # MAX_WORKERS: 8
+    volumes:
+      - ${USERDIR}/docker/mealie/data/:/app/data
+
+ grocy:
+    image: lscr.io/linuxserver/grocy
+    container_name: grocy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${USERDIR}/docker/grocy_2/data:/config
+    ports:
+      - 9283:80
+      - 9284:9284
+    restart: unless-stopped
+
+#  chatpad:
+#     image: itsnoted/chatpad:latest
+#     container_name: chatpad
+#     ports:
+#       - "8200:80"
+#     restart: unless-stopped
+
+
+
+################## Document & relationships managment
+#  i_labrarian:
+#     image: cgrima/i-librarian
+#   # privileged: true
+#     environment:
+#     - PUID=${PUID}
+#     - PGID=${PGID}
+#     - TZ=${TZ}
+#     ports:
+#       - "8888:80"
+#     volumes:
+#       - ${DATA_DIR}/multimedia/media/i_librarian:/app/data
+#       - /etc/localtime:/etc/localtime:ro
+#     restart: unless-stopped
+
+#  paperless-ngx:
+#     image: lscr.io/linuxserver/paperless-ngx:latest
+#     container_name: paperless-ngx
+#     environment:
+#       - PUID=1000
+#       - PGID=1000
+#       - TZ=America/New_York
+#       - REDIS_URL= #optional
+#     volumes:
+#       - ${USERDIR}/docker/paperless/config:/config
+#       - /mnt/8tb/nextcloud/data/admin/files/11_paperless:/data
+#     ports:
+#       - 8234:8000
+#     restart: unless-stopped
+
+
+#  calibre:
+#    image: lscr.io/linuxserver/calibre
+#    container_name: calibre
+#    environment:
+#      - PUID=${PUID}
+#      - PGID=${PGID}
+#      - TZ=${TZ}
+#    volumes:
+#      - /mnt/8tb/nextcloud/data/admin/files/31_calibre:/config
+#    ports:
+#      - 8082:8080
+#      - 8889:8888
+#    restart: unless-stopped
+
+#  calibre-web:
+#   image: lscr.io/linuxserver/calibre-web
+#   container_name: calibre-web
+#   environment:
+#     - PUID=${PUID}
+#     - PGID=${PGID}
+#     - TZ=${TZ}
+#   volumes:
+#     - ${USERDIR}/docker/calibreweb/data:/config
+#     - /mnt/8tb/nextcloud/data/admin/files/31_calibre:/books
+#   ports:
+#     - 8083:8083
+#   restart: unless-stopped
+
+
+
+############################# RSS
+
+#  miniflux:
+#     image: miniflux/miniflux:latest
+#     ports:
+#       - "80:8080"
+#     depends_on:
+#       - db_miniflux
+#     environment:
+#       - DATABASE_URL=postgres://miniflux:secret@db_miniflux/miniflux?sslmode=disable
+#       - RUN_MIGRATIONS=1
+#       - CREATE_ADMIN=1
+#       - ADMIN_USERNAME=admin
+#       - ADMIN_PASSWORD=test123
+#     restart: unless-stopped
+
+#  db_miniflux:
+#     image: postgres:14
+#     environment:
+#       - POSTGRES_USER=miniflux
+#       - POSTGRES_PASSWORD=secret
+#     volumes:
+#       - ${USERDIR}/docker/miniflux/miniflux-db:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD", "pg_isready", "-U", "miniflux"]
+#       interval: 10s
+#       start_period: 30s
+#     restart: unless-stopped
+# volumes:
+#   miniflux-db:
+
+#  rss-bridge:
+#     image: rssbridge/rss-bridge:latest
+#     volumes:
+#       - ${USERDIR}/docker/rssbridge:/config
+#     ports:
+#       - 3001:80
+#     restart: unless-stopped
+
+
+
+
+
+############################# Pendientes y Otros
+
+
+
+# #  homeassistant:
+# #     container_name: homeassistant
+# #     restart: always
+# #     image: homeassistant/home-assistant
+# #     devices:
+# #       - /dev/ttyUSB0:/dev/ttyUSB0
+# #       - /dev/ttyUSB1:/dev/ttyUSB1
+# #       - /dev/ttyACM0:/dev/ttyACM0
+# #     volumes:
+# #       - ${USERDIR}/docker/homeassistant:/config
+# #       - /etc/localtime:/etc/localtime:ro
+# #       - ${USERDIR}/docker/shared:/shared
+# #     ports:
+# #       - "8123:8123"
+# #     privileged: true
+# #     environment:
+# #       - PUID=${PUID}
+# #       - PGID=${PGID}
+# #       - TZ=${TZ}
+
+
+
+# # transmission:
+# #    image: lscr.io/linuxserver/transmission
+# #    container_name: transmission
+# #    environment:
+# #      - PUID=${PUID}
+# #      - PGID=${PGID}
+# #      - TZ=${TZ}
+# #      - USER=username #optional
+# #      - PASS=password #optional
+# #    volumes:
+# #      - ${USERDIR}/docker/transmission:/config
+# ## mount point pasado Dic-2021      - /home/HD4TB/downloads:/downloads
+# #      - /mnt/1hd/multimedia/torrents:/downloads
+# #      - /mnt/1hd/multimedia/torrents:/data/torrents
+# #      - /mnt/1hd/multimedia/torrents/completed:/data/completed
+# #      - /mnt/1hd/multimedia/torrents/incomplete:/data/incomplete
+# ###      - <path to watch folder>:/watch
+# #      - /1HD/torrents:/data/torrents
+# #    ports:
+# #      - 9091:9091
+# #      - 51413:51413
+# #      - 51413:51413/udp
+# #    restart: unless-stopped
+
+
+##########
+
+#  image: mcuadros/ofelia:latest
+#     depends_on:
+#       - nginx
+#     command: daemon --docker
+#     volumes:
+#       - /var/run/docker.sock:/var/run/docker.sock:ro
+#     labels:
+#       ofelia.job-local.my-test-job.schedule: "@every 5s"
+#       ofelia.job-local.my-test-job.command: "date"
+
+
+#  nginx:
+#     image: nginx
+#     labels:
+#       ofelia.enabled: "true"
+#       ofelia.job-exec.datecron.schedule: "@every 5s"
+#       ofelia.job-exec.datecron.command: "uname -a"
+
+################################
+####### VOLUMES ################
+################################
+
+
+
+# volumes:
+#   ytdlp2strm-data:
+
+
+
+
+
+
+
+
+
+
+
+
+
