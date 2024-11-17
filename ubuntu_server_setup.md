@@ -2,6 +2,7 @@ Ubuntu Server
 =============
 The steps taken to setup a Ubuntu web server.
 
+By: <script src="https://gist.github.com/WillSquire/6ff67d0d94e2dfe20fca.js"></script>
 Update
 ------
 Update Aptitude:
